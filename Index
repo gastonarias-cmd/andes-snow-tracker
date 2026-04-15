@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Andes Snowfall Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg2: #f6f6f4; --bg3: #efefed;
+  --text: #1a1a1a; --text2: #555; --text3: #999;
+  --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.2);
+  --radius: 12px; --radius-sm: 8px;
+  --blue: #378ADD; --blue-bg: #E6F1FB; --blue-text: #0C447C;
+  --green: #1D9E75; --green-bg: #EAF3DE; --green-text: #27500A;
+  --purple-bg: #EEEDFE; --purple-text: #3C3489;
+  --amber: #BA7517; --amber-bg: #FAEEDA; --amber-text: #633806;
+  --orange: #D85A30; --coral: #D85A30;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e; --bg2: #2a2a2a; --bg3: #141414;
+    --text: #f0f0f0; --text2: #aaa; --text3: #555;
+    --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+    --blue-bg: #0C447C; --blue-text: #B5D4F4;
+    --green-bg: #27500A; --green-text: #C0DD97;
+    --purple-bg: #3C3489; --purple-text: #CECBF6;
+    --amber-bg: #633806; --amber-text: #FAC775;
+  }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+
+header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 13px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; position: sticky; top: 0; z-index: 10; }
+header h1 { font-size: 16px; font-weight: 500; }
+.hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#upd { font-size: 11px; color: var(--text3); }
+.mode-tabs { display: flex; background: var(--bg2); border-radius: 99px; padding: 3px; gap: 2px; }
+.mode-tab { font-size: 12px; padding: 4px 13px; border-radius: 99px; border: none; cursor: pointer; background: transparent; color: var(--text2); white-space: nowrap; }
+.mode-tab.on { background: var(--bg); color: var(--text); font-weight: 500; box-shadow: 0 0 0 0.5px var(--border2); }
+.btn-ghost { font-size: 12px; padding: 4px 12px; border-radius: 99px; border: 0.5px solid var(--border2); cursor: pointer; background: transparent; color: var(--text2); }
+.btn-ghost:hover { background: var(--bg2); }
+
+main { max-width: 1000px; margin: 0 auto; padding: 20px 16px; }
+
+.note { font-size: 12px; padding: 9px 14px; border-radius: var(--radius-sm); margin-bottom: 18px; line-height: 1.5; }
+.note-blue { background: var(--blue-bg); color: var(--blue-text); }
+.note-amber { background: var(--amber-bg); color: var(--amber-text); }
+
+.country-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin: 20px 0 9px; }
+.country-label:first-of-type { margin-top: 0; }
+.resort-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+
+.card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: border-color 0.15s; }
+.card:hover { border-color: var(--border2); }
+.card.active { border: 1.5px solid var(--blue); }
+.resort-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+.resort-meta { font-size: 11px; color: var(--text3); margin-bottom: 11px; }
+.snow-big { font-size: 20px; font-weight: 500; }
+.snow-unit { font-size: 12px; color: var(--text2); font-weight: 400; }
+.pills { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }
+.pill { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.p-blue { background: var(--blue-bg); color: var(--blue-text); }
+.p-green { background: var(--green-bg); color: var(--green-text); }
+.p-purple { background: var(--purple-bg); color: var(--purple-text); }
+.shimmer { background: var(--bg2); border-radius: var(--radius-sm); height: 48px; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.err-txt { font-size: 12px; color: #c0392b; }
+
+.panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 18px; margin-top: 14px; }
+.panel-title { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+.panel-sub { font-size: 11px; color: var(--text3); margin-bottom: 14px; }
+
+.metrics { display: grid; gap: 8px; margin-bottom: 14px; }
+.metrics-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.metrics-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+@media (max-width: 520px) { .metrics-4, .metrics-3 { grid-template-columns: repeat(2, 1fr); } }
+.metric { background: var(--bg2); border-radius: var(--radius-sm); padding: 9px 11px; }
+.metric-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; }
+.metric-value { font-size: 17px; font-weight: 500; }
+.metric-sub { font-size: 10px; color: var(--text2); margin-top: 1px; }
+
+.sub-tabs { display: flex; gap: 7px; margin-bottom: 11px; }
+.sub-tab { font-size: 12px; padding: 3px 12px; border-radius: 99px; border: 0.5px solid var(--border2); cursor: pointer; background: transparent; color: var(--text2); }
+.sub-tab.on { background: var(--blue-bg); color: var(--blue-text); border-color: transparent; font-weight: 500; }
+
+.controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.controls label { font-size: 12px; color: var(--text2); }
+.controls select { font-size: 12px; padding: 5px 9px; border-radius: var(--radius-sm); border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); cursor: pointer; }
+.btn-primary { font-size: 12px; padding: 5px 14px; border-radius: 99px; border: none; cursor: pointer; background: var(--blue); color: #fff; font-weight: 500; }
+.btn-primary:hover { opacity: 0.85; }
+
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text2); margin-bottom: 7px; }
+.ld { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 3px; vertical-align: middle; }
+.chart-wrap { position: relative; width: 100%; height: 200px; }
+.chart-wrap-tall { position: relative; width: 100%; height: 240px; }
+.chart-wrap-xl { position: relative; width: 100%; height: 280px; }
+
+.loading-msg { font-size: 13px; color: var(--text3); padding: 32px 0; text-align: center; animation: pulse 1.4s ease-in-out infinite; }
+
+/* compare years */
+.compare-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.compare-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 13px 15px; }
+.compare-card h3 { font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+.bar-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 11px; }
+.bar-label { width: 76px; color: var(--text2); flex-shrink: 0; text-align: right; }
+.bar-track { flex: 1; background: var(--bg2); border-radius: 99px; height: 7px; overflow: hidden; }
+.bar-fill { height: 7px; border-radius: 99px; transition: width 0.5s; }
+.bar-val { width: 52px; font-weight: 500; flex-shrink: 0; font-size: 11px; }
+
+/* season vs season */
+.vs-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.vs-year-badge { font-size: 18px; font-weight: 500; padding: 6px 18px; border-radius: var(--radius-sm); }
+.vs-badge-a { background: var(--blue-bg); color: var(--blue-text); }
+.vs-badge-b { background: var(--amber-bg); color: var(--amber-text); }
+.vs-sep { font-size: 16px; color: var(--text3); font-weight: 300; }
+
+.vs-resort-block { margin-bottom: 20px; }
+.vs-resort-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border); }
+
+.vs-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+.vs-stat { background: var(--bg2); border-radius: var(--radius-sm); padding: 8px 10px; }
+.vs-stat-label { font-size: 10px; color: var(--text3); margin-bottom: 4px; }
+.vs-stat-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.vs-val-a { font-size: 15px; font-weight: 500; color: var(--blue-text); }
+.vs-val-b { font-size: 15px; font-weight: 500; color: var(--amber-text); }
+.vs-delta { font-size: 10px; padding: 1px 6px; border-radius: 99px; font-weight: 500; }
+.delta-pos { background: var(--green-bg); color: var(--green-text); }
+.delta-neg { background: #FCEBEB; color: #791F1F; }
+@media (prefers-color-scheme: dark) {
+  .delta-neg { background: #501313; color: #F09595; }
+}
+
+.vs-chart-wrap { position: relative; width: 100%; height: 180px; margin-top: 6px; }
+
+.section-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+.section-sub { font-size: 11px; color: var(--text3); margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Andes snowfall tracker</h1>
+  <div class="hdr-right">
+    <div class="mode-tabs">
+      <button class="mode-tab on" id="tab-forecast"  onclick="setMode('forecast')">Snow outlook</button>
+      <button class="mode-tab"    id="tab-history"   onclick="setMode('history')">Season report</button>
+      <button class="mode-tab"    id="tab-compare"   onclick="setMode('compare')">Season summary</button>
+      <button class="mode-tab"    id="tab-vs"        onclick="setMode('vs')">Compare seasons</button>
+    </div>
+    <span id="upd"></span>
+    <button class="btn-ghost" onclick="init()">Refresh</button>
+  </div>
+</header>
+
+<main><div id="app"></div></main>
+
+<script>
+const RESORTS = [
+  { name:'Cerro Catedral',      country:'Argentina', lat:-41.183, lon:-71.447, alt:2000 },
+  { name:'Chapelco',            country:'Argentina', lat:-40.308, lon:-71.394, alt:1900 },
+  { name:'Cerro Bayo',          country:'Argentina', lat:-40.637, lon:-71.534, alt:1782 },
+  { name:'Cerro Castor',        country:'Argentina', lat:-54.781, lon:-68.545, alt:1057 },
+  { name:'Valle Nevado',        country:'Chile',     lat:-33.356, lon:-70.292, alt:3025 },
+  { name:'Nevados del Chillán', country:'Chile',     lat:-36.908, lon:-71.428, alt:1870 },
+];
+
+const COLORS  = ['#378ADD','#D85A30','#1D9E75','#7F77DD','#D4537E','#BA7517'];
+const CUR_YR  = new Date().getFullYear();
+const YEARS   = Array.from({length:8}, (_,i) => CUR_YR - 1 - i);
+const MONTHS  = [{m:5,label:'June'},{m:6,label:'July'},{m:7,label:'August'},{m:8,label:'September'}];
+
+let forecastData = {}, histCache = {}, histLoading = {};
+let mode = 'forecast', sel = null, fTab = '7d';
+let histYear = CUR_YR - 1, histResort = RESORTS[0].name;
+let vsYearA = CUR_YR - 1, vsYearB = CUR_YR - 2, vsResort = RESORTS[0].name;
+let charts = [];
+
+const sum      = (arr,f,n) => (arr||[]).slice(f,f+n).reduce((a,b)=>a+(b||0),0);
+const fmt      = v => v < 0.05 ? '—' : (Math.round(v*10)/10)+' cm';
+const hkey     = (name,yr) => name+'__'+yr;
+const msum     = (dates,vals,m) => (dates||[]).reduce((a,dt,i)=> new Date(dt+'T12:00:00').getMonth()===m ? a+(vals[i]||0) : a, 0);
+const allMonths= (dates,vals) => MONTHS.map(({m})=>msum(dates,vals,m));
+
+function setMode(m) {
+  mode = m; sel = null;
+  document.querySelectorAll('.mode-tab').forEach(el=>el.classList.remove('on'));
+  document.getElementById('tab-'+m).classList.add('on');
+  render();
+}
+
+function destroyCharts() { charts.forEach(c=>c&&c.destroy()); charts=[]; }
+
+/* ── API ── */
+async function fetchForecast(r) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${r.lat}&longitude=${r.lon}&daily=snowfall_sum,temperature_2m_max,temperature_2m_min&hourly=snow_depth&forecast_days=16&timezone=auto`;
+  const res = await fetch(url); if(!res.ok) throw new Error();
+  const j = await res.json();
+  return { dates:j.daily.time, snowfall:j.daily.snowfall_sum, temp_max:j.daily.temperature_2m_max, temp_min:j.daily.temperature_2m_min, snow_depth: j.hourly.snow_depth ? Math.round((j.hourly.snow_depth[0]||0)*100) : 0 };
+}
+
+async function fetchHistory(r, year) {
+  const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${r.lat}&longitude=${r.lon}&start_date=${year}-05-01&end_date=${year}-10-31&daily=snowfall_sum,snow_depth_max,temperature_2m_max,temperature_2m_min&timezone=auto`;
+  const res = await fetch(url); if(!res.ok) throw new Error();
+  const j = await res.json();
+  const sf = j.daily.snowfall_sum||[], sd = j.daily.snow_depth_max||[];
+  return { dates:j.daily.time, snowfall:sf, snow_depth:sd, temp_max:j.daily.temperature_2m_max||[], temp_min:j.daily.temperature_2m_min||[], totalSnow:sf.reduce((a,b)=>a+(b||0),0), peakDepth:Math.max(0,...sd.map(v=>(v||0)*100)) };
+}
+
+async function loadHist(resort, year) {
+  const k = hkey(resort.name, year);
+  if(histCache[k]!==undefined || histLoading[k]) return;
+  histLoading[k] = true; render();
+  try { histCache[k] = await fetchHistory(resort, year); }
+  catch(e) { histCache[k] = {error:true}; }
+  histLoading[k] = false; render();
+}
+
+async function loadAllForYear(year) {
+  await Promise.all(RESORTS.map(r=>loadHist(r, year)));
+}
+
+function toggle(name) {
+  const r = RESORTS.find(x=>x.name===name);
+  sel = (sel&&sel.name===name) ? null : r;
+  if(sel && mode==='history') loadHist(sel, histYear);
+  render();
+  if(sel) setTimeout(()=>{ const el=document.getElementById('det'); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'}); },60);
+}
+
+function render() {
+  destroyCharts();
+  if(mode==='forecast')  renderForecast();
+  else if(mode==='history') renderHistory();
+  else if(mode==='compare') renderCompare();
+  else renderVS();
+}
+
+/* ── FORECAST ── */
+function renderForecast() {
+  let html = `<div class="note note-blue">Ski season in the Andes runs <strong>June–October</strong>. Note: ERA5 reanalysis data may underestimate snowfall at high elevations due to model resolution (~9 km grid). Click any resort for a 16-day detail.</div>`;
+  ['Argentina','Chile'].forEach(country=>{
+    html += `<div class="country-label">${country}</div><div class="resort-grid">`;
+    RESORTS.filter(r=>r.country===country).forEach(r=>{
+      const d = forecastData[r.name]; const active = sel&&sel.name===r.name;
+      html += `<div class="card${active?' active':''}" onclick="toggle('${r.name}')">`;
+      html += `<div class="resort-name">${r.name}</div><div class="resort-meta">${r.alt.toLocaleString()}m · ${r.country}</div>`;
+      if(!d) { html += `<div class="shimmer"></div>`; }
+      else if(d.error) { html += `<div class="err-txt">Failed to load</div>`; }
+      else {
+        const s24=d.snowfall[0]||0, s3=sum(d.snowfall,0,3), s7=sum(d.snowfall,0,7);
+        html += `<div class="snow-big">${Math.round(s7*10)/10} <span class="snow-unit">cm / 7 days</span></div>
+        <div class="pills"><span class="pill p-blue">24h: ${fmt(s24)}</span><span class="pill p-green">3d: ${fmt(s3)}</span><span class="pill p-purple">7d: ${fmt(s7)}</span></div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  });
+
+  if(sel && forecastData[sel.name] && !forecastData[sel.name].error) {
+    const d = forecastData[sel.name];
+    const s7=sum(d.snowfall,0,7), s14=sum(d.snowfall,0,14);
+    const minT=Math.min(...d.temp_min.slice(0,7).filter(v=>v!=null));
+    const maxT=Math.max(...d.temp_max.slice(0,7).filter(v=>v!=null));
+    html += `<div class="panel" id="det">
+      <div class="panel-title">${sel.name} — 16-day forecast</div>
+      <div class="panel-sub">${sel.country} · ${sel.alt.toLocaleString()}m · Open-Meteo forecast model</div>
+      <div class="metrics metrics-4">
+        <div class="metric"><div class="metric-label">Snow next 7 days</div><div class="metric-value">${Math.round(s7*10)/10} cm</div></div>
+        <div class="metric"><div class="metric-label">Snow next 14 days</div><div class="metric-value">${Math.round(s14*10)/10} cm</div></div>
+        <div class="metric"><div class="metric-label">Temp range (7d)</div><div class="metric-value">${Math.round(minT)}° / ${Math.round(maxT)}°C</div></div>
+        <div class="metric"><div class="metric-label">Current snow depth</div><div class="metric-value">${d.snow_depth>0?d.snow_depth+' cm':'—'}</div></div>
+      </div>
+      <div class="sub-tabs">
+        <button class="sub-tab${fTab==='7d'?' on':''}" onclick="fTab='7d';render()">7 days</button>
+        <button class="sub-tab${fTab==='14d'?' on':''}" onclick="fTab='14d';render()">14 days</button>
+      </div>
+      <div class="legend"><span><span class="ld" style="background:#378ADD"></span>Daily snowfall (cm)</span><span><span class="ld" style="background:#D85A30;border-radius:50%"></span>Max temp (°C)</span></div>
+      <div class="chart-wrap"><canvas id="fc" role="img" aria-label="Forecast chart">Chart</canvas></div>
+    </div>`;
+  }
+  document.getElementById('app').innerHTML = html;
+  if(sel && forecastData[sel.name] && !forecastData[sel.name].error) buildForecastChart(forecastData[sel.name]);
+}
+
+function buildForecastChart(d) {
+  const days = fTab==='7d'?7:14;
+  const labels = d.dates.slice(0,days).map(t=>{ const dt=new Date(t+'T12:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}); });
+  const snow = d.snowfall.slice(0,days).map(v=>Math.round((v||0)*10)/10);
+  const temp = d.temp_max.slice(0,days).map(v=>Math.round(v*10)/10);
+  const ctx = document.getElementById('fc'); if(!ctx) return;
+  charts.push(new Chart(ctx,{ type:'bar', data:{ labels, datasets:[
+    {label:'Snowfall',data:snow,backgroundColor:'#378ADD',borderRadius:4,yAxisID:'y'},
+    {label:'Max temp',data:temp,type:'line',borderColor:'#D85A30',backgroundColor:'transparent',pointBackgroundColor:'#D85A30',pointRadius:3,borderWidth:1.5,tension:0.3,yAxisID:'y2'}
+  ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false}},
+    scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',maxRotation:45,autoSkip:false}},
+      y:{position:'left',grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0},
+      y2:{position:'right',grid:{display:false},ticks:{font:{size:10},color:'#D85A30',callback:v=>v+'°'}} }
+  }}));
+}
+
+/* ── HISTORY ── */
+function renderHistory() {
+  const yearOpts = YEARS.map(y=>`<option value="${y}"${y===histYear?' selected':''}>${y}</option>`).join('');
+  let html = `<div class="note note-amber">ERA5 reanalysis data (~9 km grid resolution). Snowfall totals may be lower than actual resort measurements, especially at higher elevations. Useful for comparing seasons relative to each other.</div>`;
+  html += `<div class="controls">
+    <label>Resort:</label>
+    <select onchange="histResort=this.value;loadHist(RESORTS.find(r=>r.name===histResort),histYear)">${RESORTS.map(r=>`<option value="${r.name}"${r.name===histResort?' selected':''}>${r.name}</option>`).join('')}</select>
+    <label>Season:</label>
+    <select onchange="histYear=parseInt(this.value);loadHist(RESORTS.find(r=>r.name===histResort),histYear)">${yearOpts}</select>
+  </div>`;
+
+  const resort = RESORTS.find(r=>r.name===histResort);
+  const k = hkey(histResort, histYear);
+  const d = histCache[k], loading = histLoading[k];
+
+  if(loading) { html+=`<div class="loading-msg">Loading ${histYear} data for ${histResort}...</div>`; }
+  else if(d===undefined) { html+=`<div class="loading-msg">Select a resort and season above</div>`; }
+  else if(d.error) { html+=`<div class="err-txt" style="padding:20px 0">Failed to load. Try a different selection.</div>`; }
+  else {
+    const total=Math.round(d.totalSnow*10)/10, peak=Math.round(d.peakDepth);
+    const ms = allMonths(d.dates,d.snowfall);
+    const bestM = MONTHS[ms.indexOf(Math.max(...ms))].label;
+    const minT = Math.round(Math.min(...d.temp_min.filter(v=>v!=null)));
+    html += `<div class="panel" id="det">
+      <div class="panel-title">${resort.name} — ${histYear} season</div>
+      <div class="panel-sub">${resort.country} · ${resort.alt.toLocaleString()}m · May–October · ERA5 reanalysis via Open-Meteo</div>
+      <div class="metrics metrics-4">
+        <div class="metric"><div class="metric-label">Total snowfall</div><div class="metric-value">${total} cm</div></div>
+        <div class="metric"><div class="metric-label">Peak snow depth</div><div class="metric-value">${peak} cm</div></div>
+        <div class="metric"><div class="metric-label">Coldest day</div><div class="metric-value">${minT}°C</div></div>
+        <div class="metric"><div class="metric-label">Best month</div><div class="metric-value">${bestM}</div></div>
+      </div>
+      <div class="metrics metrics-4" style="margin-top:-4px">
+        ${MONTHS.map(({label},i)=>`<div class="metric"><div class="metric-label">${label}</div><div class="metric-value">${Math.round(ms[i]*10)/10} cm</div></div>`).join('')}
+      </div>
+      <div class="legend"><span><span class="ld" style="background:#378ADD"></span>Daily snowfall (cm)</span><span><span class="ld" style="background:#1D9E75;border-radius:50%"></span>Snow depth (cm)</span></div>
+      <div class="chart-wrap-tall"><canvas id="hc" role="img" aria-label="${histYear} season chart">Chart</canvas></div>
+    </div>`;
+  }
+  document.getElementById('app').innerHTML = html;
+  if(d && !d.error) buildHistChart(d, 'hc');
+}
+
+function buildHistChart(d, id) {
+  const ctx = document.getElementById(id); if(!ctx) return;
+  const snow = d.snowfall.map(v=>Math.round((v||0)*10)/10);
+  const depth = d.snow_depth.map(v=>Math.round((v||0)*100));
+  const fmtLbl = (_,i)=> i%14===0 ? new Date(d.dates[i]+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+  charts.push(new Chart(ctx,{ type:'bar', data:{ labels:d.dates, datasets:[
+    {label:'Daily snowfall',data:snow,backgroundColor:'rgba(55,138,221,0.75)',borderRadius:2,yAxisID:'y',order:2},
+    {label:'Snow depth',data:depth,type:'line',borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.1)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.4,yAxisID:'y2',order:1}
+  ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false}},
+    scales:{ x:{grid:{color:'rgba(128,128,128,0.07)'},ticks:{font:{size:10},color:'#888',maxRotation:45,callback:fmtLbl}},
+      y:{position:'left',grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0},
+      y2:{position:'right',grid:{display:false},ticks:{font:{size:10},color:'#1D9E75',callback:v=>v+' cm'},min:0} }
+  }}));
+}
+
+/* ── COMPARE YEARS ── */
+function renderCompare() {
+  const yearOpts = YEARS.map(y=>`<option value="${y}"${y===histYear?' selected':''}>${y}</option>`).join('');
+  let html = `<div class="note note-amber">ERA5 reanalysis data. Values are useful for <strong>relative comparison</strong> between seasons, not absolute snowfall measurements.</div>`;
+  html += `<div class="controls"><label>Season:</label><select onchange="histYear=parseInt(this.value)">${yearOpts}</select><button class="btn-primary" onclick="loadAllForYear(histYear)">Load ${histYear} data</button></div>`;
+
+  const anyLoading = RESORTS.some(r=>histLoading[hkey(r.name,histYear)]);
+  const allDone    = RESORTS.every(r=>histCache[hkey(r.name,histYear)]!==undefined && !histLoading[hkey(r.name,histYear)]);
+
+  if(anyLoading) { html+=`<div class="loading-msg">Fetching ${histYear} data for all resorts...</div>`; document.getElementById('app').innerHTML=html; return; }
+  if(!allDone)   { html+=`<div class="loading-msg">Select a season and click Load</div>`; document.getElementById('app').innerHTML=html; return; }
+
+  const results = RESORTS.map(r=>{ const d=histCache[hkey(r.name,histYear)]; if(!d||d.error) return null;
+    return {r, d, total:Math.round(d.totalSnow*10)/10, peak:Math.round(d.peakDepth), msnow:allMonths(d.dates,d.snowfall).map(v=>Math.round(v*10)/10)}; }).filter(Boolean);
+
+  const maxTotal=Math.max(...results.map(x=>x.total)), maxPeak=Math.max(...results.map(x=>x.peak));
+  const sorted=[...results].sort((a,b)=>b.total-a.total);
+
+  html += `<div class="section-title">${histYear} — total snowfall ranking</div><div class="section-sub" style="margin-bottom:14px">Sorted by total snowfall, May–October</div>`;
+  html += `<div class="compare-grid">`;
+  sorted.forEach(({r,total,peak})=>{
+    html+=`<div class="compare-card"><h3>${r.name} <span style="font-size:11px;font-weight:400;color:var(--text3)">${r.country}</span></h3>
+      <div class="bar-row"><div class="bar-label">Total snow</div><div class="bar-track"><div class="bar-fill" style="width:${maxTotal>0?Math.round(total/maxTotal*100):0}%;background:#378ADD"></div></div><div class="bar-val">${total} cm</div></div>
+      <div class="bar-row"><div class="bar-label">Peak depth</div><div class="bar-track"><div class="bar-fill" style="width:${maxPeak>0?Math.round(peak/maxPeak*100):0}%;background:#1D9E75"></div></div><div class="bar-val">${peak} cm</div></div>
+    </div>`;
+  });
+  html += `</div>`;
+  html += `<div class="section-title">Monthly breakdown</div><div class="section-sub">June through September snowfall by resort</div><div class="chart-wrap-xl"><canvas id="mc" role="img" aria-label="Monthly comparison">Chart</canvas></div>`;
+
+  document.getElementById('app').innerHTML = html;
+  const ctx = document.getElementById('mc'); if(!ctx) return;
+  charts.push(new Chart(ctx,{ type:'bar', data:{ labels:MONTHS.map(m=>m.label), datasets:sorted.map(({r,msnow},i)=>({label:r.name,data:msnow,backgroundColor:COLORS[i%COLORS.length],borderRadius:3})) },
+    options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#888',boxWidth:12,padding:12}}},
+      scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:12},color:'#888'}}, y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
+    }
+  }));
+}
+
+/* ── SEASON VS SEASON ── */
+function renderVS() {
+  const yearOpts = (sel_yr) => YEARS.map(y=>`<option value="${y}"${y===sel_yr?' selected':''}>${y}</option>`).join('');
+
+  let html = `<div class="note note-amber">ERA5 reanalysis data. Best used for <strong>relative comparison</strong> between seasons rather than absolute snowfall totals.</div>`;
+  html += `<div class="controls">
+    <label>Resort:</label>
+    <select onchange="vsResort=this.value">${RESORTS.map(r=>`<option value="${r.name}"${r.name===vsResort?' selected':''}>${r.name}</option>`).join('')}</select>
+    <label>Season A:</label>
+    <select onchange="vsYearA=parseInt(this.value)">${yearOpts(vsYearA)}</select>
+    <label>vs</label>
+    <select onchange="vsYearB=parseInt(this.value)">${yearOpts(vsYearB)}</select>
+    <button class="btn-primary" onclick="loadAndRenderVS()">Compare</button>
+  </div>`;
+
+  const resort = RESORTS.find(r=>r.name===vsResort);
+  const kA = hkey(vsResort,vsYearA), kB = hkey(vsResort,vsYearB);
+  const dA = histCache[kA], dB = histCache[kB];
+  const loadingA = histLoading[kA], loadingB = histLoading[kB];
+
+  if(loadingA||loadingB) { html+=`<div class="loading-msg">Loading data...</div>`; document.getElementById('app').innerHTML=html; return; }
+  if(dA===undefined||dB===undefined) { html+=`<div class="loading-msg">Select two seasons and click Compare</div>`; document.getElementById('app').innerHTML=html; return; }
+  if(dA.error||dB.error) { html+=`<div class="err-txt" style="padding:20px 0">Failed to load one or both seasons.</div>`; document.getElementById('app').innerHTML=html; return; }
+
+  const totalA=Math.round(dA.totalSnow*10)/10, totalB=Math.round(dB.totalSnow*10)/10;
+  const peakA=Math.round(dA.peakDepth), peakB=Math.round(dB.peakDepth);
+  const minTA=Math.round(Math.min(...dA.temp_min.filter(v=>v!=null)));
+  const minTB=Math.round(Math.min(...dB.temp_min.filter(v=>v!=null)));
+  const msA=allMonths(dA.dates,dA.snowfall).map(v=>Math.round(v*10)/10);
+  const msB=allMonths(dB.dates,dB.snowfall).map(v=>Math.round(v*10)/10);
+
+  function delta(a,b,unit='cm',invert=false) {
+    const diff = Math.round((a-b)*10)/10;
+    if(Math.abs(diff)<0.1) return '';
+    const better = invert ? diff<0 : diff>0;
+    const sign = diff>0?'+':'';
+    return `<span class="vs-delta ${better?'delta-pos':'delta-neg'}">${sign}${diff}${unit}</span>`;
+  }
+  function deltaTemp(a,b) {
+    const diff=a-b; if(Math.abs(diff)<0.2) return '';
+    const sign=diff>0?'+':'';
+    return `<span class="vs-delta delta-neg">${sign}${Math.round(diff)}°C</span>`;
+  }
+
+  html += `<div class="vs-header">
+    <div class="vs-year-badge vs-badge-a">${vsYearA}</div>
+    <div class="vs-sep">vs</div>
+    <div class="vs-year-badge vs-badge-b">${vsYearB}</div>
+    <span style="font-size:13px;color:var(--text2);margin-left:4px">· ${resort.name}</span>
+  </div>`;
+
+  /* summary stats */
+  html += `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-title">Season summary</div>
+    <div class="panel-sub">${resort.country} · ${resort.alt.toLocaleString()}m · May–October</div>
+    <div class="vs-stat-grid">
+      <div class="vs-stat"><div class="vs-stat-label">Total snowfall</div><div class="vs-stat-row"><span class="vs-val-a">${totalA} cm</span><span class="vs-val-b">${totalB} cm</span>${delta(totalA,totalB)}</div></div>
+      <div class="vs-stat"><div class="vs-stat-label">Peak snow depth</div><div class="vs-stat-row"><span class="vs-val-a">${peakA} cm</span><span class="vs-val-b">${peakB} cm</span>${delta(peakA,peakB)}</div></div>
+      <div class="vs-stat"><div class="vs-stat-label">Coldest day</div><div class="vs-stat-row"><span class="vs-val-a">${minTA}°C</span><span class="vs-val-b">${minTB}°C</span>${deltaTemp(minTA,minTB)}</div></div>
+    </div>
+    <div class="vs-stat-grid" style="margin-top:8px">
+      ${MONTHS.map(({label},i)=>`<div class="vs-stat"><div class="vs-stat-label">${label}</div><div class="vs-stat-row"><span class="vs-val-a">${msA[i]} cm</span><span class="vs-val-b">${msB[i]} cm</span>${delta(msA[i],msB[i])}</div></div>`).join('')}
+    </div>
+  </div>`;
+
+  /* daily snowfall overlay chart */
+  html += `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-title">Daily snowfall overlay</div>
+    <div class="panel-sub">May–October, both seasons on the same axis</div>
+    <div class="legend">
+      <span><span class="ld" style="background:#378ADD"></span>${vsYearA}</span>
+      <span><span class="ld" style="background:#BA7517"></span>${vsYearB}</span>
+    </div>
+    <div class="chart-wrap-xl"><canvas id="vc1" role="img" aria-label="Daily snowfall overlay">Chart</canvas></div>
+  </div>`;
+
+  /* monthly grouped bar chart */
+  html += `<div class="panel">
+    <div class="panel-title">Monthly snowfall comparison</div>
+    <div class="panel-sub">June through September</div>
+    <div class="chart-wrap"><canvas id="vc2" role="img" aria-label="Monthly comparison">Chart</canvas></div>
+  </div>`;
+
+  document.getElementById('app').innerHTML = html;
+
+  /* overlay chart — align both series by day-of-season (index) */
+  const maxLen = Math.max(dA.dates.length, dB.dates.length);
+  const dayLabels = Array.from({length:maxLen},(_,i)=>{
+    const dt = new Date(dA.dates[0]+'T12:00:00'); dt.setDate(dt.getDate()+i);
+    return i%14===0 ? dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+  });
+  const snowA = dA.snowfall.map(v=>Math.round((v||0)*10)/10);
+  const snowB = dB.snowfall.map(v=>Math.round((v||0)*10)/10);
+
+  const ctx1 = document.getElementById('vc1'); if(!ctx1) return;
+  charts.push(new Chart(ctx1,{ type:'line', data:{ labels:dayLabels, datasets:[
+    {label:String(vsYearA),data:snowA,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.12)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.3},
+    {label:String(vsYearB),data:snowB,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.10)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.3,borderDash:[4,3]}
+  ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false}},
+    scales:{ x:{grid:{color:'rgba(128,128,128,0.07)'},ticks:{font:{size:10},color:'#888',maxRotation:45}},
+      y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
+  }}));
+
+  /* monthly bar */
+  const ctx2 = document.getElementById('vc2'); if(!ctx2) return;
+  charts.push(new Chart(ctx2,{ type:'bar', data:{ labels:MONTHS.map(m=>m.label), datasets:[
+    {label:String(vsYearA),data:msA,backgroundColor:'#378ADD',borderRadius:4},
+    {label:String(vsYearB),data:msB,backgroundColor:'#BA7517',borderRadius:4}
+  ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#888',boxWidth:12,padding:12}}},
+    scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:12},color:'#888'}},
+      y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
+  }}));
+}
+
+async function loadAndRenderVS() {
+  const resort = RESORTS.find(r=>r.name===vsResort);
+  await Promise.all([loadHist(resort,vsYearA), loadHist(resort,vsYearB)]);
+}
+
+/* ── INIT ── */
+async function init() {
+  forecastData = {};
+  document.getElementById('upd').textContent = 'Fetching...';
+  render();
+  await Promise.all(RESORTS.map(async r=>{
+    try { forecastData[r.name] = await fetchForecast(r); }
+    catch(e) { forecastData[r.name]={error:true}; }
+    if(mode==='forecast') render();
+  }));
+  const now = new Date();
+  document.getElementById('upd').textContent = `Updated ${now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · Open-Meteo`;
+  if(mode!=='forecast') render();
+}
+
+init();
+</script>
+</body>
+</html>
