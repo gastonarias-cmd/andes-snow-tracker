@@ -31,12 +31,12 @@
 }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
 
-header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 13px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; position: sticky; top: 0; z-index: 10; }
-header h1 { font-size: 16px; font-weight: 500; }
-.hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; position: sticky; top: 0; z-index: 10; }
+header h1 { font-size: 15px; font-weight: 500; }
+.hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
 #upd { font-size: 11px; color: var(--text3); }
-.mode-tabs { display: flex; background: var(--bg2); border-radius: 99px; padding: 3px; gap: 2px; }
-.mode-tab { font-size: 12px; padding: 4px 13px; border-radius: 99px; border: none; cursor: pointer; background: transparent; color: var(--text2); white-space: nowrap; }
+.mode-tabs { display: flex; background: var(--bg2); border-radius: 99px; padding: 3px; gap: 2px; flex-wrap: wrap; width: 100%; }
+.mode-tab { font-size: 11px; padding: 4px 10px; border-radius: 99px; border: none; cursor: pointer; background: transparent; color: var(--text2); white-space: nowrap; flex: 1; text-align: center; }
 .mode-tab.on { background: var(--bg); color: var(--text); font-weight: 500; box-shadow: 0 0 0 0.5px var(--border2); }
 .btn-ghost { font-size: 12px; padding: 4px 12px; border-radius: 99px; border: 0.5px solid var(--border2); cursor: pointer; background: transparent; color: var(--text2); }
 .btn-ghost:hover { background: var(--bg2); }
@@ -92,9 +92,10 @@ main { max-width: 1000px; margin: 0 auto; padding: 20px 16px; }
 
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text2); margin-bottom: 7px; }
 .ld { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 3px; vertical-align: middle; }
-.chart-wrap { position: relative; width: 100%; height: 200px; }
-.chart-wrap-tall { position: relative; width: 100%; height: 240px; }
-.chart-wrap-xl { position: relative; width: 100%; height: 280px; }
+.chart-wrap { position: relative; width: 100%; height: 200px; min-height: 200px; }
+.chart-wrap-tall { position: relative; width: 100%; height: 240px; min-height: 240px; }
+.chart-wrap-xl { position: relative; width: 100%; height: 280px; min-height: 280px; }
+.vs-chart-wrap { position: relative; width: 100%; height: 180px; min-height: 180px; margin-top: 6px; }
 
 .loading-msg { font-size: 13px; color: var(--text3); padding: 32px 0; text-align: center; animation: pulse 1.4s ease-in-out infinite; }
 
@@ -280,7 +281,7 @@ function renderForecast() {
     </div>`;
   }
   document.getElementById('app').innerHTML = html;
-  if(sel && forecastData[sel.name] && !forecastData[sel.name].error) buildForecastChart(forecastData[sel.name]);
+  if(sel && forecastData[sel.name] && !forecastData[sel.name].error) setTimeout(()=>buildForecastChart(forecastData[sel.name]),50);
 }
 
 function buildForecastChart(d) {
@@ -339,7 +340,7 @@ function renderHistory() {
     </div>`;
   }
   document.getElementById('app').innerHTML = html;
-  if(d && !d.error) buildHistChart(d, 'hc');
+  if(d && !d.error) setTimeout(()=>buildHistChart(d, 'hc'),50);
 }
 
 function buildHistChart(d, id) {
@@ -387,13 +388,15 @@ function renderCompare() {
   html += `<div class="section-title">Monthly breakdown</div><div class="section-sub">June through September snowfall by resort</div><div class="chart-wrap-xl"><canvas id="mc" role="img" aria-label="Monthly comparison">Chart</canvas></div>`;
 
   document.getElementById('app').innerHTML = html;
-  const ctx = document.getElementById('mc'); if(!ctx) return;
-  charts.push(new Chart(ctx,{ type:'bar', data:{ labels:MONTHS.map(m=>m.label), datasets:sorted.map(({r,msnow},i)=>({label:r.name,data:msnow,backgroundColor:COLORS[i%COLORS.length],borderRadius:3})) },
-    options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#888',boxWidth:12,padding:12}}},
-      scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:12},color:'#888'}}, y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
-    }
-  }));
+  setTimeout(()=>{
+    const ctx = document.getElementById('mc'); if(!ctx) return;
+    charts.push(new Chart(ctx,{ type:'bar', data:{ labels:MONTHS.map(m=>m.label), datasets:sorted.map(({r,msnow},i)=>({label:r.name,data:msnow,backgroundColor:COLORS[i%COLORS.length],borderRadius:3})) },
+      options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#888',boxWidth:12,padding:12}}},
+        scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:12},color:'#888'}}, y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
+      }
+    }));
+  },50);
 }
 
 /* ── SEASON VS SEASON ── */
@@ -491,25 +494,27 @@ function renderVS() {
   const snowB = dB.snowfall.map(v=>Math.round((v||0)*10)/10);
 
   const ctx1 = document.getElementById('vc1'); if(!ctx1) return;
-  charts.push(new Chart(ctx1,{ type:'line', data:{ labels:dayLabels, datasets:[
-    {label:String(vsYearA),data:snowA,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.12)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.3},
-    {label:String(vsYearB),data:snowB,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.10)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.3,borderDash:[4,3]}
-  ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:false}},
-    scales:{ x:{grid:{color:'rgba(128,128,128,0.07)'},ticks:{font:{size:10},color:'#888',maxRotation:45}},
-      y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
-  }}));
+  setTimeout(()=>{
+    const ctx1 = document.getElementById('vc1'); if(!ctx1) return;
+    charts.push(new Chart(ctx1,{ type:'line', data:{ labels:dayLabels, datasets:[
+      {label:String(vsYearA),data:snowA,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.12)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.3},
+      {label:String(vsYearB),data:snowB,borderColor:'#BA7517',backgroundColor:'rgba(186,117,23,0.10)',fill:true,pointRadius:0,borderWidth:1.5,tension:0.3,borderDash:[4,3]}
+    ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:'rgba(128,128,128,0.07)'},ticks:{font:{size:10},color:'#888',maxRotation:45}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
+    }}));
 
-  /* monthly bar */
-  const ctx2 = document.getElementById('vc2'); if(!ctx2) return;
-  charts.push(new Chart(ctx2,{ type:'bar', data:{ labels:MONTHS.map(m=>m.label), datasets:[
-    {label:String(vsYearA),data:msA,backgroundColor:'#378ADD',borderRadius:4},
-    {label:String(vsYearB),data:msB,backgroundColor:'#BA7517',borderRadius:4}
-  ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#888',boxWidth:12,padding:12}}},
-    scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:12},color:'#888'}},
-      y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
-  }}));
+    const ctx2 = document.getElementById('vc2'); if(!ctx2) return;
+    charts.push(new Chart(ctx2,{ type:'bar', data:{ labels:MONTHS.map(m=>m.label), datasets:[
+      {label:String(vsYearA),data:msA,backgroundColor:'#378ADD',borderRadius:4},
+      {label:String(vsYearB),data:msB,backgroundColor:'#BA7517',borderRadius:4}
+    ]}, options:{ responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#888',boxWidth:12,padding:12}}},
+      scales:{ x:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:12},color:'#888'}},
+        y:{grid:{color:'rgba(128,128,128,0.1)'},ticks:{font:{size:10},color:'#888',callback:v=>v+' cm'},min:0} }
+    }}));
+  },50);
 }
 
 async function loadAndRenderVS() {
